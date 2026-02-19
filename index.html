@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>くじを引く</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 48px 32px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      width: 100%;
+      max-width: 400px;
+    }
+    .emoji { font-size: 64px; margin-bottom: 24px; }
+    h2 {
+      color: #333;
+      font-size: 22px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    p {
+      color: #888;
+      font-size: 16px;
+      margin-bottom: 36px;
+      line-height: 1.6;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 20px;
+      background: linear-gradient(135deg, #ff6b35, #f7931e);
+      color: white;
+      border-radius: 16px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 22px;
+      box-shadow: 0 4px 16px rgba(255,107,53,0.4);
+    }
+    #result {
+      display: none;
+    }
+    .result-icon { font-size: 80px; margin-bottom: 24px; }
+    .result-rank { font-size: 32px; font-weight: bold; margin-bottom: 16px; }
+    .result-message { font-size: 18px; line-height: 1.6; }
+    .win { color: #e65100; }
+    .lose { color: #2c5f8a; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="thanks">
+      <div class="emoji">🎯</div>
+      <h2>アンケートへのご回答<br>ありがとうございます！</h2>
+      <p>下のボタンをタップして<br>くじを引いてください！</p>
+      <a class="btn" id="drawBtn">くじを引く！</a>
+    </div>
+    <div id="result">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-rank" id="resultRank"></div>
+      <div class="result-message" id="resultMessage"></div>
+    </div>
+  </div>
+
+  <script>
+    const DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbzAWybeMu2btSHtAdqyyYjQpT-nV3ZAKy13ViyWweBUeETbqfhS_v7mxadzfrzH49UF/exec';
+
+    document.getElementById('drawBtn').addEventListener('click', function() {
+      this.textContent = '抽選中...';
+      this.style.pointerEvents = 'none';
+
+      fetch(DEPLOY_URL + '?mode=draw')
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('thanks').style.display = 'none';
+          document.getElementById('result').style.display = 'block';
+
+          if (data.result === 'win') {
+            document.body.style.background = 'linear-gradient(135deg, #fff9e6, #ffe0b2)';
+            document.getElementById('resultIcon').textContent = data.icon;
+            document.getElementById('resultRank').textContent = data.rank;
+            document.getElementById('resultRank').className = 'result-rank win';
+            document.getElementById('resultMessage').textContent = data.message;
+            document.getElementById('resultMessage').className = 'result-message win';
+          } else {
+            document.getElementById('resultIcon').textContent = '😢';
+            document.getElementById('resultMessage').textContent = 'ハズレ。またのご参加をお待ちしています！';
+            document.getElementById('resultMessage').className = 'result-message lose';
+          }
+        })
+        .catch(() => {
+          document.getElementById('resultMessage').textContent = 'エラーが発生しました。もう一度お試しください。';
+        });
+    });
+  </script>
+</body>
+</html>
