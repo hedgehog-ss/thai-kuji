@@ -25,85 +25,87 @@
       max-width: 400px;
     }
     .emoji { font-size: 64px; margin-bottom: 24px; }
-    h2 {
-      color: #333;
-      font-size: 22px;
-      line-height: 1.6;
-      margin-bottom: 12px;
-    }
-    p {
-      color: #888;
-      font-size: 16px;
-      margin-bottom: 36px;
-      line-height: 1.6;
-    }
+    h2 { color: #333; font-size: 22px; line-height: 1.6; margin-bottom: 12px; }
+    p { color: #888; font-size: 16px; margin-bottom: 36px; line-height: 1.6; }
     .btn {
-      display: block;
-      width: 100%;
-      padding: 20px;
+      display: block; width: 100%; padding: 20px;
       background: linear-gradient(135deg, #ff6b35, #f7931e);
-      color: white;
-      border-radius: 16px;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 22px;
+      color: white; border-radius: 16px; text-decoration: none;
+      font-weight: bold; font-size: 22px; cursor: pointer; border: none;
       box-shadow: 0 4px 16px rgba(255,107,53,0.4);
     }
-    #result {
-      display: none;
-    }
+    .btn:disabled { background: #ccc; box-shadow: none; }
+    .error { color: #e53935; font-size: 18px; font-weight: bold; line-height: 1.6; }
     .result-icon { font-size: 80px; margin-bottom: 24px; }
     .result-rank { font-size: 32px; font-weight: bold; margin-bottom: 16px; }
-    .result-message { font-size: 18px; line-height: 1.6; }
+    .result-message { font-size: 18px; line-height: 1.6; font-weight: bold; }
     .win { color: #e65100; }
     .lose { color: #2c5f8a; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div id="thanks">
-      <div class="emoji">🎯</div>
-      <h2>アンケートへのご回答<br>ありがとうございます！</h2>
-      <p>下のボタンをタップして<br>くじを引いてください！</p>
-      <a class="btn" id="drawBtn">くじを引く！</a>
-    </div>
-    <div id="result">
-      <div class="result-icon" id="resultIcon"></div>
-      <div class="result-rank" id="resultRank"></div>
-      <div class="result-message" id="resultMessage"></div>
-    </div>
+  <div class="card" id="card">
+    <!-- 初期表示はJSで制御 -->
   </div>
 
   <script>
     const DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbzAWybeMu2btSHtAdqyyYjQpT-nV3ZAKy13ViyWweBUeETbqfhS_v7mxadzfrzH49UF/exec';
+    const card = document.getElementById('card');
 
-    document.getElementById('drawBtn').addEventListener('click', function() {
-      this.textContent = '抽選中...';
-      this.style.pointerEvents = 'none';
+    // URLからトークンを取得
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('t');
 
-      fetch(DEPLOY_URL + '?mode=draw')
-        .then(r => r.json())
-        .then(data => {
-          document.getElementById('thanks').style.display = 'none';
-          document.getElementById('result').style.display = 'block';
+    if (!token) {
+      // トークンなし→エラー表示
+      card.innerHTML = `
+        <div class="emoji">🚫</div>
+        <p class="error">このページは直接アクセスできません。<br>アンケート回答後のURLからアクセスしてください。</p>
+      `;
+    } else {
+      // トークンあり→くじ画面表示
+      card.innerHTML = `
+        <div class="emoji">🎯</div>
+        <h2>アンケートへのご回答<br>ありがとうございます！</h2>
+        <p>下のボタンをタップして<br>くじを引いてください！</p>
+        <button class="btn" id="drawBtn">くじを引く！</button>
+      `;
 
-          if (data.result === 'win') {
-            document.body.style.background = 'linear-gradient(135deg, #fff9e6, #ffe0b2)';
-            document.getElementById('resultIcon').textContent = data.icon;
-            document.getElementById('resultRank').textContent = data.rank;
-            document.getElementById('resultRank').className = 'result-rank win';
-            document.getElementById('resultMessage').textContent = data.message;
-            document.getElementById('resultMessage').className = 'result-message win';
-          } else {
-            document.getElementById('resultIcon').textContent = '😢';
-            document.getElementById('resultMessage').textContent = 'ハズレ。またのご参加をお待ちしています！';
-            document.getElementById('resultMessage').className = 'result-message lose';
-          }
-        })
-        .catch(() => {
-          document.getElementById('resultMessage').textContent = 'エラーが発生しました。もう一度お試しください。';
-        });
-    });
+      document.getElementById('drawBtn').addEventListener('click', function() {
+        this.textContent = '抽選中...';
+        this.disabled = true;
+
+        fetch(DEPLOY_URL + '?mode=draw&t=' + encodeURIComponent(token))
+          .then(r => r.json())
+          .then(data => {
+            if (data.result === 'win') {
+              card.style.background = 'linear-gradient(135deg, #fff9e6, #ffe0b2)';
+              document.body.style.background = 'linear-gradient(135deg, #fff9e6, #ffe0b2)';
+              card.innerHTML = `
+                <div class="result-icon">${data.icon}</div>
+                <div class="result-rank win">${data.rank}</div>
+                <div class="result-message win">${data.message}</div>
+              `;
+            } else if (data.result === 'lose') {
+              card.innerHTML = `
+                <div class="result-icon">😢</div>
+                <div class="result-message lose">ハズレ。またのご参加をお待ちしています！</div>
+              `;
+            } else {
+              card.innerHTML = `
+                <div class="emoji">⚠️</div>
+                <p class="error">${data.message}</p>
+              `;
+            }
+          })
+          .catch(() => {
+            card.innerHTML = `
+              <div class="emoji">⚠️</div>
+              <p class="error">エラーが発生しました。<br>もう一度お試しください。</p>
+            `;
+          });
+      });
+    }
   </script>
 </body>
 </html>
