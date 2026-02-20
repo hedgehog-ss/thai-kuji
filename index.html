@@ -102,6 +102,17 @@
       });
     });
 
+// すでに抽選済みの場合は結果画面を表示
+    if (sessionStorage.getItem('drawn')) {
+      document.getElementById('survey').style.display = 'none';
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = `
+        <div class="result-icon">⚠️</div>
+        <div class="result-message lose">すでにくじを引かれています。</div>
+      `;
+    }
+
     // 送信ボタン
     document.getElementById('submitBtn').addEventListener('click', function() {
       const selected = document.querySelector('input[name="q1"]:checked');
@@ -113,6 +124,7 @@
       this.disabled = true;
       this.textContent = '抽選中...';
 
+      sessionStorage.setItem('drawn', 'true');
       const answer = selected.value;
 
       fetch(DEPLOY_URL + '?mode=draw&answer=' + encodeURIComponent(answer))
