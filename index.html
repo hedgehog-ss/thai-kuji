@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>くじを引く</title>
+  <title>アンケート</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -18,94 +18,131 @@
     .card {
       background: white;
       border-radius: 24px;
-      padding: 48px 32px;
+      padding: 40px 32px;
       text-align: center;
       box-shadow: 0 8px 32px rgba(0,0,0,0.12);
       width: 100%;
       max-width: 400px;
     }
-    .emoji { font-size: 64px; margin-bottom: 24px; }
-    h2 { color: #333; font-size: 22px; line-height: 1.6; margin-bottom: 12px; }
-    p { color: #888; font-size: 16px; margin-bottom: 36px; line-height: 1.6; }
-    .btn {
-      display: block; width: 100%; padding: 20px;
-      background: linear-gradient(135deg, #ff6b35, #f7931e);
-      color: white; border-radius: 16px; text-decoration: none;
-      font-weight: bold; font-size: 22px; cursor: pointer; border: none;
-      box-shadow: 0 4px 16px rgba(255,107,53,0.4);
+    .logo {
+      width: 100%;
+      max-width: 280px;
+      margin-bottom: 24px;
     }
-    .btn:disabled { background: #ccc; box-shadow: none; }
-    .error { color: #e53935; font-size: 18px; font-weight: bold; line-height: 1.6; }
+    h2 { color: #333; font-size: 20px; line-height: 1.6; margin-bottom: 24px; }
+    .question { color: #333; font-size: 17px; font-weight: bold; margin-bottom: 16px; text-align: left; }
+    .choices { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+    .choice {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 16px;
+      color: #333;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .choice input { margin-right: 12px; width: 20px; height: 20px; cursor: pointer; }
+    .choice.selected { border-color: #ff6b35; background: #fff5f2; }
+    .btn {
+      display: block; width: 100%; padding: 18px;
+      background: linear-gradient(135deg, #ff6b35, #f7931e);
+      color: white; border-radius: 16px; border: none;
+      font-weight: bold; font-size: 20px; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(255,107,53,0.4);
+      transition: opacity 0.2s;
+    }
+    .btn:disabled { background: #ccc; box-shadow: none; cursor: not-allowed; }
+    .error { color: #e53935; font-size: 15px; margin-bottom: 16px; }
     .result-icon { font-size: 80px; margin-bottom: 24px; }
     .result-rank { font-size: 32px; font-weight: bold; margin-bottom: 16px; }
     .result-message { font-size: 18px; line-height: 1.6; font-weight: bold; }
     .win { color: #e65100; }
     .lose { color: #2c5f8a; }
+    #loading { color: #888; font-size: 16px; }
   </style>
 </head>
 <body>
   <div class="card" id="card">
-    <!-- 初期表示はJSで制御 -->
+    <!-- アンケート画面 -->
+    <div id="survey">
+      <img src="logo_ol_350.png" class="logo" alt="ロゴ">
+      <h2>アンケートにご回答ください</h2>
+      <div class="question">どこでお知りになりましたか？</div>
+      <div class="choices">
+        <label class="choice" id="choice-web">
+          <input type="radio" name="q1" value="Web"> Web
+        </label>
+        <label class="choice" id="choice-sns">
+          <input type="radio" name="q1" value="SNS"> SNS
+        </label>
+        <label class="choice" id="choice-tv">
+          <input type="radio" name="q1" value="TV"> TV
+        </label>
+      </div>
+      <div class="error" id="error" style="display:none">選択肢を選んでください</div>
+      <button class="btn" id="submitBtn">くじを引く！</button>
+    </div>
+
+    <!-- 結果画面 -->
+    <div id="result" style="display:none"></div>
   </div>
 
   <script>
     const DEPLOY_URL = 'https://script.google.com/macros/s/AKfycbzAWybeMu2btSHtAdqyyYjQpT-nV3ZAKy13ViyWweBUeETbqfhS_v7mxadzfrzH49UF/exec';
-    const card = document.getElementById('card');
 
-    // URLからトークンを取得
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('t');
-
-    if (!token) {
-      // トークンなし→エラー表示
-      card.innerHTML = `
-        <div class="emoji">🚫</div>
-        <p class="error">このページは直接アクセスできません。<br>アンケート回答後のURLからアクセスしてください。</p>
-      `;
-    } else {
-      // トークンあり→くじ画面表示
-      card.innerHTML = `
-        <div class="emoji">🎯</div>
-        <h2>アンケートへのご回答<br>ありがとうございます！</h2>
-        <p>下のボタンをタップして<br>くじを引いてください！</p>
-        <button class="btn" id="drawBtn">くじを引く！</button>
-      `;
-
-      document.getElementById('drawBtn').addEventListener('click', function() {
-        this.textContent = '抽選中...';
-        this.disabled = true;
-
-        fetch(DEPLOY_URL + '?mode=draw&t=' + encodeURIComponent(token))
-          .then(r => r.json())
-          .then(data => {
-            if (data.result === 'win') {
-              card.style.background = 'linear-gradient(135deg, #fff9e6, #ffe0b2)';
-              document.body.style.background = 'linear-gradient(135deg, #fff9e6, #ffe0b2)';
-              card.innerHTML = `
-                <div class="result-icon">${data.icon}</div>
-                <div class="result-rank win">${data.rank}</div>
-                <div class="result-message win">${data.message}</div>
-              `;
-            } else if (data.result === 'lose') {
-              card.innerHTML = `
-                <div class="result-icon">😢</div>
-                <div class="result-message lose">ハズレ。またのご参加をお待ちしています！</div>
-              `;
-            } else {
-              card.innerHTML = `
-                <div class="emoji">⚠️</div>
-                <p class="error">${data.message}</p>
-              `;
-            }
-          })
-          .catch(() => {
-            card.innerHTML = `
-              <div class="emoji">⚠️</div>
-              <p class="error">エラーが発生しました。<br>もう一度お試しください。</p>
-            `;
-          });
+    // 選択肢のスタイル切り替え
+    document.querySelectorAll('.choice input').forEach(input => {
+      input.addEventListener('change', function() {
+        document.querySelectorAll('.choice').forEach(c => c.classList.remove('selected'));
+        this.closest('.choice').classList.add('selected');
+        document.getElementById('error').style.display = 'none';
       });
-    }
+    });
+
+    // 送信ボタン
+    document.getElementById('submitBtn').addEventListener('click', function() {
+      const selected = document.querySelector('input[name="q1"]:checked');
+      if (!selected) {
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+
+      this.disabled = true;
+      this.textContent = '抽選中...';
+
+      const answer = selected.value;
+
+      fetch(DEPLOY_URL + '?mode=draw&answer=' + encodeURIComponent(answer))
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('survey').style.display = 'none';
+          const resultDiv = document.getElementById('result');
+          resultDiv.style.display = 'block';
+
+          if (data.result === 'win') {
+            document.body.style.background = 'linear-gradient(135deg, #fff9e6, #ffe0b2)';
+            document.querySelector('.card').style.background = 'white';
+            resultDiv.innerHTML = `
+              <div class="result-icon">${data.icon}</div>
+              <div class="result-rank win">${data.rank}</div>
+              <div class="result-message win">${data.message}</div>
+            `;
+          } else {
+            resultDiv.innerHTML = `
+              <div class="result-icon">😢</div>
+              <div class="result-message lose">ハズレ。またのご参加をお待ちしています！</div>
+            `;
+          }
+        })
+        .catch(() => {
+          document.getElementById('submitBtn').disabled = false;
+          document.getElementById('submitBtn').textContent = 'くじを引く！';
+          alert('エラーが発生しました。もう一度お試しください。');
+        });
+    });
   </script>
 </body>
 </html>
